@@ -59,39 +59,44 @@ def send_email(user_id, data):
         return False
 
 st.set_page_config(page_title="SMU Training", layout="wide")
+
+COURSE_NAME = "Applications of Psychology in Society (Work, Health and Education)"
+MODULE_NAME = "Application of Psychology in Society - Work C"
+AFFILIATION = "Leuphana university"
+FACILITATORS = [
+    "Anna Redvanska",
+    "Ezzat Bachour",
+    "Maja Gabriel-Węglowska",
+    "Karolina Kozłowska"
+]
+
 st.sidebar.title("SMU Training Program")
-st.sidebar.caption(f"Course: {COURSE_NAME}")
-st.sidebar.caption("Facilitators: " + ", ".join(FACILITATORS))
 st.sidebar.caption("14-day evidence-based digital wellness program")
+st.sidebar.markdown("---")
+st.sidebar.markdown(f"**Course:**<br>{COURSE_NAME}", unsafe_allow_html=True)
+st.sidebar.markdown("**Facilitators:**<br>" + "<br>".join(FACILITATORS), unsafe_allow_html=True)
+st.sidebar.markdown("---")
 user_id = st.sidebar.text_input("Participant ID")
 DEFAULT = {"progress": 0, "logs": [], "pretest": {}, "day2_logs": [], "day3": {}}
 data = load(user_id) if user_id else DEFAULT
-COURSE_NAME = "YOUR COURSE NAME HERE"
-MODULE_NAME = "Social Media Usage Training"
-AFFILIATION = "Your university / program (optional)"
-FACILITATORS = [
-    "Name 1",
-    "Name 2",
-    "Name 3",
-    "Name 4",
-]
+
+
 
 
 tab0, tab1, tab2, tab3, tab4 = st.tabs(["Overview", "Dashboard", "Day 1", "Day 2", "Day 3"])
 
 # ── OVERVIEW ──────────────────────────────────────────
 with tab0:
-    st.header("Social Media Usage Training")
-    st.subheader(MODULE_NAME)
-    st.caption(f"Course: {COURSE_NAME}")
-    if AFFILIATION.strip():
-        st.caption(f"Affiliation: {AFFILIATION}")
-        
-    st.markdown("**Facilitators**")
-    st.write(", ".join(FACILITATORS))
+    # ── OVERVIEW ──────────────────────────────────────────
+with tab0:
+    st.title("Social Media Usage Training")
+    st.markdown(f"**Module:** {MODULE_NAME}")
+    st.markdown(f"**Course:** {COURSE_NAME}")
+    st.markdown("**Facilitators:** " + ", ".join(FACILITATORS))
     st.markdown("---")
-
+    
     st.markdown("**Target:** Young adults and students with problematic social media use")
+
     st.markdown("**Duration:** 14 days — 3 online sessions + individual work")
     st.markdown("**Theory:** Action Regulation Theory — moving from automatic to intentional behavior")
 
