@@ -7,9 +7,8 @@ from datetime import date
 
 st.set_page_config(page_title="SMU Training", layout="wide")
 
-@st.cache_resource
 def get_db():
-    conn = sqlite3.connect('users.db')
+    conn = sqlite3.connect('users.db', check_same_thread=False)
     conn.execute("CREATE TABLE IF NOT EXISTS t (id TEXT PRIMARY KEY, data TEXT)")
     return conn
 
