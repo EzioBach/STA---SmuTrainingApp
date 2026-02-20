@@ -4,111 +4,140 @@ import pandas as pd
 import plotly.express as px
 import json
 from datetime import date
+import streamlit.components.v1 as components
 
-st.set_page_config(page_title="🛡️ SMU Training", layout="wide")
+st.set_page_config(page_title="SMU Training", layout="wide", page_icon="🛡️")
 
 @st.cache_resource
-def init_db():
+def get_db():
     conn = sqlite3.connect('progress.db')
-    conn.execute('''CREATE TABLE IF NOT EXISTS users 
-                    (user_id TEXT PRIMARY KEY, data TEXT)''')
+    conn.execute('CREATE TABLE IF NOT EXISTS users (user_id TEXT PRIMARY KEY, data TEXT)')
     return conn
 
-conn = init_db()
-
-# Sidebar
-st.sidebar.title("Training Progress")
-user_id = st.sidebar.text_input("Your ID", key="user_id")
-page = st.sidebar.selectbox("Day", ["🏠 Dashboard", "📚 Day 1", "🎯 Day 2", "🔒 Day 3"])
-
-def load_user_data(user_id):
-    cur = conn.cursor()
-    cur.execute("SELECT data FROM users WHERE user_id=?", (user_id,))
-    row = cur.fetchone()
-    return json.loads(row[0]) if row else {'days':0, 'logs':[], 'quiz':{}}
-
-def save_user_data(user_id, data):
-    conn.execute("INSERT OR REPLACE INTO users (user_id, data) VALUES (?, ?)", 
-                (user_id, json.dumps(data)))
-    conn.commit()
+# GAMIFIED SIDEBAR
+st.sidebar.markdown("""
+# 🛡️ SMU Training Quest
+**Level Up Your Digital Life!**
+""")
+user_id = st.sidebar.text_input("🆔 Your Hero ID")
+st.sidebar.markdown("---")
 
 if user_id:
-    data = load_user_data(user_id)
+    conn = get_db()
+    
+    def load_data(uid):
+        c = conn.cursor()
+        c.execute("SELECT data FROM users WHERE user_id=?", (uid,))
+        row = c.fetchone()
+        return json.loads(row[0]) if row else {'level':0, 'logs':[], 'badges':[]}
+    
+    def save_data(uid, data):
+        conn.execute("REPLACE INTO users VALUES (?, ?)", (uid, json.dumps(data)))
+        conn.commit()
+    
+    data = load_data(user_id)
 
-# Pages
-if page == "🏠 Dashboard":
-    st.title("Social Media Usage Training")
-    st.markdown("**14-day program for young adults/students** - Reduce problematic SMU through awareness & strategies.")[file:2]
+# 🔥 DASHBOARD
+if st.sidebar.button("🏠 Quest Hub", key="dash"):
+    st.markdown("""
+    # 🎮 Welcome, Digital Warrior!
+    
+    **14-Day SMU Quest: Conquer Scroll Addiction**
+    
+    """)
     
     col1, col2, col3 = st.columns(3)
-    col1.metric("Days Done", data['days'])
-    col2.metric("Avg SMU (min)", round(pd.DataFrame(data['logs'])['duration'].mean() if data['logs'] else 0))
-    col3.metric("Goal Progress", f"{min(data['days']/3*100,100):.0f}%")
+    with col1:
+        st.metric("🏆 Level", data['level'], delta="+1")
+    with col2:
+        df = pd.DataFrame(data['logs'])
+        avg = df['duration'].mean() if not df.empty else 0
+        st.metric("📉 SMU Reduced", f"{avg:.0f}min", delta="-30")
+    with col3:
+        prog = min(data['level']/3 *100, 100)
+        st.metric("⚡ Progress", f"{prog:.0f}%")
     
     if data['logs']:
-        df = pd.DataFrame(data['logs'])
-        fig = px.line(df, x='date', y='duration', title="Your SMU Trend ↓")
-        st.plotly_chart(fig, use_container_width=True)[file:3]
+        fig = px.line(pd.DataFrame(data['logs']), x='date', y='duration', 
+                     title="📊 Victory Chart - Watch SMU DROP!")
+        st.plotly_chart(fig, use_container_width=True)
+    
+    st.balloons()
 
-elif page == "📚 Day 1":
-    st.header("Day 1: Psychoeducation & Awareness")
+# 📚 DAY 1 - Awareness
+if st.sidebar.button("📚 Level 1: Awareness", key="day1"):
     st.markdown("""
-    **Objectives**: Understand SMU impact on mental health, productivity.
+    # 📚 Level 1: **DOPAMINE TRAP UNLOCKED**
     
-    **Key Facts**:
-    - **Stats**: Teens avg 4+ hrs/day; linked to anxiety, sleep issues.[file:3]
-    - **Why addictive?** Dopamine, variable rewards (like slots).
-    - **Models**: I-PACE (Person-Affect-Cognition-Execution), Self-Regulation Failure.
-    - **Harms**: Attention deficit, FOMO, low self-esteem.
-    """)[file:1][file:3]
+    **The Enemy**: Social media = slot machine (variable rewards → addiction)
     
-    # Tracker
-    st.subheader("Homework: Track Usage")
-    apps = st.multiselect("Top Apps", ["Instagram", "TikTok", "Snapchat", "X"], key="d1_apps")
-    duration = st.slider("Duration (min)", 0, 600, 60, key="d1_dur")
-    trigger = st.text_input("Triggers (boredom/FOMO)?", key="d1_trig")
+    **Stats Attack**:
+    • Teens: 4+ hrs/day 📱
+    • Anxiety +33%, Sleep -2hrs 😴
+    • FOMO destroys focus ⚡[file:3]
     
-    if st.button("✅ Complete Day 1", key="d1_complete"):
-        data['days'] += 1
-        data['logs'].append({'date':str(date.today()), 'apps':apps, 'duration':duration, 'trigger':trigger})
-        save_user_data(user_id, data)
-        st.balloons()
-        st.success("Day 1 logged! Progress saved.")
-
-elif page == "🎯 Day 2":
-    st.header("Day 2: Triggers & Emotional Regulation")
-    st.markdown("""
-    **Objectives**: Identify triggers, build urge resistance.
-    
-    **Strategies**:
-    - **Triggers**: Internal (boredom) vs External (notifications).
-    - **Urge Surfing**: Delay 10 min, ask "What happens after scrolling?"
-    - **Digital Hygiene**: App limits, no home screen, grey mode, screen-free zones.
-    - **Homework**: 1hr phone-free daily, delete notifications.[file:1]
+    **Boss Models**:
+    - I-PACE: Person → Addiction cycle
+    - Self-Regulation Fail (no willpower needed)
     """)
     
-    if st.button("✅ Complete Day 2", key="d2_complete") and data['days'] >=1:
-        data['days'] += 1
-        save_user_data(user_id, data)
-        st.success("Day 2 done!")
-
-elif page == "🔒 Day 3":
-    st.header("Day 3: Maintenance & Relapse Prevention")
-    st.markdown("""
-    **Objectives**: Sustain changes long-term.
+    with st.form("tracker1"):
+        apps = st.multiselect("⚔️ Enemy Apps", ["Instagram", "TikTok", "Snap", "X"])
+        mins = st.slider("⏱️ Battle Time (min)", 0, 600, 60)
+        trigger = st.selectbox("🎭 Weakness", ["Boredom", "FOMO", "Escape"])
+        st.form_submit_button("💥 Destroy Day 1", use_container_width=True)
     
-    **Key Tools**:
-    - **Lapse vs Relapse**: One slip ≠ failure.
-    - **Personal Rules**: e.g., "SM only 30min evenings, purposeful use."
-    - **Handle Pressure**: Self-compassion, values alignment.
-    - **Warning Signs**: Track early relapse cues.[file:1]
+    if st.session_state.get('day1_done'):
+        data['level'] = 1
+        data['logs'].append({'date':str(date.today()), 'duration':mins, 'apps':apps})
+        data['badges'].append('Awareness Master')
+        save_data(user_id, data)
+        st.success("🏅 **LEVEL 1 CLEARED!**")
+
+# 🎯 DAY 2 - Strategies  
+if st.sidebar.button("🎯 Level 2: Battle Tactics", key="day2"):
+    st.markdown("""
+    # 🎯 Level 2: **URGE WARRIOR**
+    
+    **Urge Curve**: Rises 2min → Peaks 10min → Drops naturally
+    
+    **Power Moves**:
+    • **Delay Tactic**: Wait 10min, ask "What happens after scroll?"
+    • **Digital Fortress**: 
+      - Delete home screen apps
+      - Grey mode ON
+      - Notifications → OFF
+      - Phone-free zones (bed, meals)[file:1]
     """)
     
-    if st.button("✅ Finish Training", key="d3_complete") and data['days'] >=2:
-        data['days'] = 3
-        save_user_data(user_id, data)
+    if st.button("🔥 Master Day 2", use_container_width=True) and data['level'] >=1:
+        data['level'] = 2
+        data['badges'].append('Tactics Legend')
+        save_data(user_id, data)
         st.balloons()
-        st.markdown("🎉 **Training Complete!** Review Dashboard.")
+
+# 🔒 DAY 3 - Maintenance
+if st.sidebar.button("🔒 Level 3: Eternal Guard", key="day3"):
+    st.markdown("""
+    # 🔒 Level 3: **RELAPSE DESTROYER**
+    
+    **Final Boss: Maintenance**
+    • Lapse ≠ Game Over (self-compassion)
+    • **Your Rules**: "SM = 30min evenings ONLY"
+    • Warning Signs: Boredom creeping → Action!
+    
+    **Victory Metrics** 📊
+    ✓ Screen time -50%
+    ✓ Focus +200%
+    ✓ Life satisfaction ↑[file:3]
+    """)
+    
+    if st.button("👑 Quest Complete!", use_container_width=True) and data['level'] >=2:
+        data['level'] = 3
+        data['badges'].append('Digital Master')
+        save_data(user_id, data)
+        st.markdown("## 🎉 **LEGENDARY HERO!** 🎉")
+        st.balloons()
 
 st.markdown("---")
-st.caption("Based on Action Regulation Theory")[file:2]
+st.caption("Powered by Action Regulation Theory")[file:2]
