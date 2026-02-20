@@ -87,8 +87,6 @@ tab0, tab1, tab2, tab3, tab4 = st.tabs(["Overview", "Dashboard", "Day 1", "Day 2
 
 # ── OVERVIEW ──────────────────────────────────────────
 with tab0:
-    # ── OVERVIEW ──────────────────────────────────────────
-with tab0:
     st.title("Social Media Usage Training")
     st.markdown(f"**Module:** {MODULE_NAME}")
     st.markdown(f"**Course:** {COURSE_NAME}")
