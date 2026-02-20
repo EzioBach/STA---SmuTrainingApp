@@ -72,6 +72,7 @@ with tab1:
             fig = px.line(df, x="date", y="duration", title="Daily Usage Trend")
             st.plotly_chart(fig, use_container_width=True)
             st.subheader("All Your Logs")
+            df["apps"] = df["apps"].apply(lambda x: ", ".join(x) if isinstance(x, list) else str(x))
             st.dataframe(df, use_container_width=True)
             if st.button("Send Report to Email"):
                 if send_email(user_id, data):
