@@ -5,87 +5,112 @@ import plotly.express as px
 import json
 from datetime import date
 
-st.set_page_config(layout="wide", page_icon="📱")
+st.set_page_config(page_title="SMU Training", layout="wide")
 
 @st.cache_resource
-def init_db():
+def get_db():
     conn = sqlite3.connect('users.db')
-    conn.execute("CREATE TABLE IF NOT EXISTS progress (id TEXT PRIMARY KEY, data TEXT)")
+    conn.execute("CREATE TABLE IF NOT EXISTS t (id TEXT PRIMARY KEY, data TEXT)")
     return conn
 
-# Navigation tabs
-tab1, tab2, tab3, tab4 = st.tabs(["📊 Dashboard", "Day 1", "Day 2", "Day 3"])
+conn = get_db()
 
 user_id = st.sidebar.text_input("Your ID")
 
-if user_id:
-    conn = init_db()
-    
-    def get_data():
-        c = conn.cursor()
-        c.execute("SELECT data FROM progress WHERE id=?", (user_id,))
-        row = c.fetchone()
-        return json.loads(row[0]) if row else {"progress": 0, "logs": []}
-    
-    def save_data(data):
-        conn.execute("REPLACE INTO progress VALUES (?, ?)", (user_id, json.dumps(data)))
-        conn.commit()
-    
-    data = get_data()
+DEFAULT = {"progress": 0, "logs": []}
+
+def load(uid):
+    c = conn.cursor()
+    c.execute("SELECT data FROM t WHERE id=?", (uid,))
+    row = c.fetchone()
+    return json.loads(row[0]) if row else {"progress": 0, "logs": []}
+
+def save(uid, d):
+    conn.execute("REPLACE INTO t VALUES (?, ?)", (uid, json.dumps(d)))
+    conn.commit()
+
+data = load(user_id) if user_id else DEFAULT
+
+tab1, tab2, tab3, tab4 = st.tabs(["Dashboard", "Day 1", "Day 2", "Day 3"])
 
 with tab1:
     st.header("Dashboard")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Days", data["progress"])
-    if data["logs"]:
-        df = pd.DataFrame(data["logs"])
-        col2.metric("Avg Usage", f"{df['duration'].mean():.0f} min")
-        col3.metric("Progress", f"{data['progress']/3*100:.0f}%")
-        
-        fig = px.line(df, x="date", y="duration", title="Usage Trend")
-        st.plotly_chart(fig, use_container_width=True)
+    if not user_id:
+        st.warning("Enter your ID in the sidebar to start.")
     else:
-        st.info("Complete Day 1 to see charts")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Days Done", data["progress"])
+        col2.metric("Progress", str(round(data["progress"] / 3 * 100)) + "%")
+        if data["logs"]:
+            df = pd.DataFrame(data["logs"])
+            col3.metric("Avg Usage", str(round(df["duration"].mean())) + " min")
+            fig = px.line(df, x="date", y="duration", title="Daily Usage Trend")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            col3.metric("Avg Usage", "0 min")
+            st.info("Complete Day 1 to see your chart.")
 
 with tab2:
     st.header("Day 1 - Awareness")
-    st.write("Track your baseline usage")
-    
-    apps = st.multiselect("Platforms", ["Instagram", "TikTok", "Snapchat", "X"])
-    duration = st.slider("Minutes used", 0, 600, 60)
-    trigger = st.text_input("Main trigger")
-    
-    if st.button("Save Day 1"):
-        new_data = data.copy()
-        new_data["progress"] = 1
-        new_data["logs"].append({"date": str(date.today()), "duration": duration, "apps": apps})
-        save_data(new_data)
-        st.success("Saved!")
-        st.rerun()
+    if not user_id:
+        st.warning("Enter your ID first.")
+    else:
+        st.write("Understand your social media habits and their impact.")
+        apps = st.multiselect("Platforms you use most", ["Instagram", "TikTok", "Snapchat", "X", "YouTube"])
+        duration = st.slider("Daily usage in minutes", 0, 600, 120)
+        trigger = st.text_input("What triggers you to open social media?")
+        emotion = st.selectbox("How do you feel after using it?", ["Relaxed", "Anxious", "Empty", "Fine", "Distracted"])
+        if st.button("Save Day 1", use_container_width=True):
+            d = load(user_id)
+            d["progress"] = max(d["progress"], 1)
+            d["logs"].append({"date": str(date.today()), "duration": duration, "apps": apps, "trigger": trigger})
+            save(user_id, d)
+            data.update(d)
+            st.success("Day 1 saved!")
 
 with tab3:
     st.header("Day 2 - Strategies")
-    st.write("Digital hygiene checklist")
-    
-    col1, col2, col3 = st.columns(3)
-    t1 = col1.checkbox("App limits")
-    t2 = col2.checkbox("Notifications off")
-    t3 = col3.checkbox("Screen-free zone")
-    
-    if st.button("Complete Day 2") and data["progress"] >= 1 and sum([t1,t2,t3]) >= 2:
-        new_data = data.copy()
-        new_data["progress"] = 2
-        save_data(new_data)
-        st.success("Day 2 complete!")
+    if not user_id:
+        st.warning("Enter your ID first.")
+    elif data["progress"] < 1:
+        st.warning("Complete Day 1 first.")
+    else:
+        st.write("Build your digital boundaries.")
+        c1, c2 = st.columns(2)
+        t1 = c1.checkbox("Set app time limits")
+        t2 = c1.checkbox("Remove apps from home screen")
+        t3 = c2.checkbox("Turn off notifications")
+        t4 = c2.checkbox("Create one screen-free zone")
+        duration2 = st.slider("Today's usage in minutes", 0, 600, 90)
+        if st.button("Save Day 2", use_container_width=True):
+            if sum([t1, t2, t3, t4]) >= 2:
+                d = load(user_id)
+                d["progress"] = max(d["progress"], 2)
+                d["logs"].append({"date": str(date.today()), "duration": duration2, "apps": [], "trigger": ""})
+                save(user_id, d)
+                data.update(d)
+                st.success("Day 2 saved!")
+            else:
+                st.error("Complete at least 2 tasks.")
 
 with tab4:
     st.header("Day 3 - Maintenance")
-    st.write("Your sustainability plan")
-    
-    rules = st.text_area("3 Personal Rules")
-    if st.button("Finish Program") and data["progress"] >= 2:
-        new_data = data.copy()
-        new_data["progress"] = 3
-        save_data(new_data)
-        st.success("Program complete! Check dashboard.")
-        st.balloons()
+    if not user_id:
+        st.warning("Enter your ID first.")
+    elif data["progress"] < 2:
+        st.warning("Complete Day 2 first.")
+    else:
+        st.write("Build long-term habits and prevent relapse.")
+        rules = st.text_area("Write your 3 personal social media rules")
+        warning_signs = st.text_input("Your early warning signs of relapse")
+        duration3 = st.slider("Today's usage in minutes", 0, 600, 60)
+        if st.button("Complete Program", use_container_width=True):
+            if rules:
+                d = load(user_id)
+                d["progress"] = 3
+                d["logs"].append({"date": str(date.today()), "duration": duration3, "apps": [], "trigger": ""})
+                save(user_id, d)
+                st.success("Program complete! Check your Dashboard.")
+                st.balloons()
+            else:
+                st.error("Write your personal rules first.")
