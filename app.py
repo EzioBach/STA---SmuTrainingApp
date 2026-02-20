@@ -4,7 +4,41 @@ import pandas as pd
 import plotly.express as px
 import json
 from datetime import date
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
+def send_email(user_id, data):
+    try:
+        sender = st.secrets["EMAIL_ADDRESS"]
+        password = st.secrets["EMAIL_PASSWORD"]
+        receiver = st.secrets["RECEIVER_EMAIL"]
+
+        logs_df = pd.DataFrame(data["logs"]) if data["logs"] else pd.DataFrame()
+        
+        body = f"""
+SMU Training Report
+====================
+Participant ID: {user_id}
+Days Completed: {data['progress']}
+Total Logs: {len(data['logs'])}
+
+Log Details:
+{logs_df.to_string() if not logs_df.empty else 'No logs yet'}
+        """
+
+        msg = MIMEMultipart()
+        msg["From"] = sender
+        msg["To"] = receiver
+        msg["Subject"] = f"SMU Training Report - {user_id}"
+        msg.attach(MIMEText(body, "plain"))
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(sender, password)
+            server.send_message(msg)
+        return True
+    except Exception as e:
+        return False
 st.set_page_config(page_title="SMU Training", layout="wide")
 
 def get_db():
@@ -33,6 +67,13 @@ data = load(user_id) if user_id else DEFAULT
 tab1, tab2, tab3, tab4 = st.tabs(["Dashboard", "Day 1", "Day 2", "Day 3"])
 
 with tab1:
+    if user_id and data["logs"]:
+    if st.button("Send My Data to Email"):
+        success = send_email(user_id, data)
+        if success:
+            st.success("Report sent to your email!")
+        else:
+            st.error("Failed. Check Streamlit Secrets settings.")
     st.header("Dashboard")
     if not user_id:
         st.warning("Enter your ID in the sidebar to start.")
