@@ -4,9 +4,8 @@ import pandas as pd
 import plotly.express as px
 import json
 from datetime import date
-import streamlit.components.v1 as components
 
-st.set_page_config(page_title="SMU Training", layout="wide", page_icon="🛡️")
+st.set_page_config(page_title="SMU Training Program", layout="wide", page_icon="📊")
 
 @st.cache_resource
 def get_db():
@@ -14,13 +13,11 @@ def get_db():
     conn.execute('CREATE TABLE IF NOT EXISTS users (user_id TEXT PRIMARY KEY, data TEXT)')
     return conn
 
-# GAMIFIED SIDEBAR
-st.sidebar.markdown("""
-# 🛡️ SMU Training Quest
-**Level Up Your Digital Life!**
-""")
-user_id = st.sidebar.text_input("🆔 Your Hero ID")
-st.sidebar.markdown("---")
+# Professional Sidebar
+st.sidebar.title("SMU Training Program")
+st.sidebar.markdown("**Evidence-Based Digital Wellness**")
+user_id = st.sidebar.text_input("Participant ID")
+page = st.sidebar.radio("Session", ["📊 Dashboard", "Day 1: Awareness", "Day 2: Intervention", "Day 3: Maintenance"])
 
 if user_id:
     conn = get_db()
@@ -29,7 +26,7 @@ if user_id:
         c = conn.cursor()
         c.execute("SELECT data FROM users WHERE user_id=?", (uid,))
         row = c.fetchone()
-        return json.loads(row[0]) if row else {'level':0, 'logs':[], 'badges':[]}
+        return json.loads(row[0]) if row else {'progress':0, 'logs':[], 'assessments':[]}
     
     def save_data(uid, data):
         conn.execute("REPLACE INTO users VALUES (?, ?)", (uid, json.dumps(data)))
@@ -37,107 +34,100 @@ if user_id:
     
     data = load_data(user_id)
 
-# 🔥 DASHBOARD
-if st.sidebar.button("🏠 Quest Hub", key="dash"):
-    st.markdown("""
-    # 🎮 Welcome, Digital Warrior!
+# 📊 DASHBOARD - Professional Metrics
+if page == "📊 Dashboard":
+    st.title("Social Media Usage Training")
+    st.markdown("**14-Day Intervention Program** *Action Regulation Theory*")
     
-    **14-Day SMU Quest: Conquer Scroll Addiction**
-    
-    """)
-    
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("🏆 Level", data['level'], delta="+1")
+    col1, col2, col3, col4 = st.columns(4)
+    with col1: st.metric("Days Completed", data['progress'])
     with col2:
         df = pd.DataFrame(data['logs'])
-        avg = df['duration'].mean() if not df.empty else 0
-        st.metric("📉 SMU Reduced", f"{avg:.0f}min", delta="-30")
-    with col3:
-        prog = min(data['level']/3 *100, 100)
-        st.metric("⚡ Progress", f"{prog:.0f}%")
+        avg_time = df['duration'].mean() if not df.empty else 0
+        st.metric("Avg Daily Usage", f"{avg_time:.0f} min")
+    with col3: st.metric("Progress", f"{data['progress']/3*100:.0f}%")
+    with col4: st.metric("Sessions", len(data['logs']))
     
     if data['logs']:
-        fig = px.line(pd.DataFrame(data['logs']), x='date', y='duration', 
-                     title="📊 Victory Chart - Watch SMU DROP!")
-        st.plotly_chart(fig, use_container_width=True)
+        df = pd.DataFrame(data['logs'])
+        fig = px.line(df, x='date', y='duration', title="Daily SMU Trend (Target: ↓ Trend)",
+                     color_discrete_sequence=['#1f77b4'])
+        st.plotly_chart(fig, use_container_width=True)[file:3]
     
-    st.balloons()
+    st.markdown("**Next Action**: Continue daily tracking")
 
-# 📚 DAY 1 - Awareness
-if st.sidebar.button("📚 Level 1: Awareness", key="day1"):
+# DAY 1: Awareness (Research Heavy)
+elif page == "Day 1: Awareness":
+    st.header("Day 1: Psychoeducation & Self-Monitoring")
     st.markdown("""
-    # 📚 Level 1: **DOPAMINE TRAP UNLOCKED**
+    **Session Objectives** (60-90 min):
+    1. Understand SMU mechanisms (dopamine, variable rewards)
+    2. Recognize personal patterns & consequences
     
-    **The Enemy**: Social media = slot machine (variable rewards → addiction)
-    
-    **Stats Attack**:
-    • Teens: 4+ hrs/day 📱
-    • Anxiety +33%, Sleep -2hrs 😴
-    • FOMO destroys focus ⚡[file:3]
-    
-    **Boss Models**:
-    - I-PACE: Person → Addiction cycle
-    - Self-Regulation Fail (no willpower needed)
+    **Evidence**:
+    - Daily usage: 240+ min teens (Pew 2024)[file:3]
+    - Harms: Anxiety ↑33%, attention ↓, sleep disruption
+    - Models: I-PACE, Self-Regulation Failure (Baumeister)[file:1]
     """)
     
-    with st.form("tracker1"):
-        apps = st.multiselect("⚔️ Enemy Apps", ["Instagram", "TikTok", "Snap", "X"])
-        mins = st.slider("⏱️ Battle Time (min)", 0, 600, 60)
-        trigger = st.selectbox("🎭 Weakness", ["Boredom", "FOMO", "Escape"])
-        st.form_submit_button("💥 Destroy Day 1", use_container_width=True)
+    with st.form("day1_form"):
+        col1, col2, col3 = st.columns(3)
+        with col1: apps = st.multiselect("Primary Platforms", ["Instagram", "TikTok", "Snapchat", "X/Twitter"])
+        with col2: duration = st.number_input("Daily Duration (min)", min_value=0, value=60)
+        with col3: trigger = st.text_input("Primary Trigger")
+        submitted = st.form_submit_button("Complete Day 1 Tracking", use_container_width=True)
     
-    if st.session_state.get('day1_done'):
-        data['level'] = 1
-        data['logs'].append({'date':str(date.today()), 'duration':mins, 'apps':apps})
-        data['badges'].append('Awareness Master')
+    if submitted:
+        data['progress'] += 1
+        data['logs'].append({'date':str(date.today()), 'apps':apps, 'duration':duration, 'trigger':trigger})
         save_data(user_id, data)
-        st.success("🏅 **LEVEL 1 CLEARED!**")
+        st.success("✅ Day 1 completed. Data saved to your profile.")
+        st.rerun()
 
-# 🎯 DAY 2 - Strategies  
-if st.sidebar.button("🎯 Level 2: Battle Tactics", key="day2"):
+# DAY 2: Intervention Strategies
+elif page == "Day 2: Intervention":
+    st.header("Day 2: Behavioral & Environmental Strategies")
     st.markdown("""
-    # 🎯 Level 2: **URGE WARRIOR**
-    
-    **Urge Curve**: Rises 2min → Peaks 10min → Drops naturally
-    
-    **Power Moves**:
-    • **Delay Tactic**: Wait 10min, ask "What happens after scroll?"
-    • **Digital Fortress**: 
-      - Delete home screen apps
-      - Grey mode ON
-      - Notifications → OFF
-      - Phone-free zones (bed, meals)[file:1]
+    **Core Techniques**:
+    - **Urge Surfing**: Peak passes naturally (10min delay)
+    - **Implementation Intentions**: "IF bored, THEN walk 5min"
+    - **Digital Hygiene**:
+      • Remove apps from home screen
+      • Notifications OFF (non-essential)
+      • Screen-free zones (bedroom, meals)
+      • 1hr daily phone-free periods[file:1]
     """)
     
-    if st.button("🔥 Master Day 2", use_container_width=True) and data['level'] >=1:
-        data['level'] = 2
-        data['badges'].append('Tactics Legend')
-        save_data(user_id, data)
-        st.balloons()
+    col1, col2 = st.columns(2)
+    with col1:
+        st.info("**Homework**: Implement 3 strategies today")
+    with col2:
+        if st.button("Mark Day 2 Complete", use_container_width=True) and data['progress'] >=1:
+            data['progress'] += 1
+            save_data(user_id, data)
+            st.success("✅ Day 2 logged")
 
-# 🔒 DAY 3 - Maintenance
-if st.sidebar.button("🔒 Level 3: Eternal Guard", key="day3"):
+# DAY 3: Maintenance
+elif page == "Day 3: Maintenance":
+    st.header("Day 3: Relapse Prevention & Sustainability")
     st.markdown("""
-    # 🔒 Level 3: **RELAPSE DESTROYER**
+    **Long-Term Systems**:
+    - **Personal Usage Rules**: Specific, measurable (e.g., "30min evenings max")
+    - **Early Warning Signs**: Boredom → Auto-scroll
+    - **Lapse vs Relapse**: Single slip ≠ failure
+    - **Social Support**: Share rules with accountability partner[file:1]
     
-    **Final Boss: Maintenance**
-    • Lapse ≠ Game Over (self-compassion)
-    • **Your Rules**: "SM = 30min evenings ONLY"
-    • Warning Signs: Boredom creeping → Action!
-    
-    **Victory Metrics** 📊
-    ✓ Screen time -50%
-    ✓ Focus +200%
-    ✓ Life satisfaction ↑[file:3]
+    **Expected Outcomes**:
+    - Screen time ↓50%
+    - Focus ↑, Procrastination ↓
+    - Life satisfaction ↑[file:3]
     """)
     
-    if st.button("👑 Quest Complete!", use_container_width=True) and data['level'] >=2:
-        data['level'] = 3
-        data['badges'].append('Digital Master')
+    if st.button("Complete Program", use_container_width=True) and data['progress'] >=2:
+        data['progress'] = 3
         save_data(user_id, data)
-        st.markdown("## 🎉 **LEGENDARY HERO!** 🎉")
-        st.balloons()
+        st.success("🎯 **Program Complete!** Review your dashboard metrics.")
 
 st.markdown("---")
-st.caption("Powered by Action Regulation Theory")[file:2]
+with st.expander("Research Basis"):
+    st.markdown("**Action Regulation Theory** - Goal-directed self-regulation cycles[file:2]")
